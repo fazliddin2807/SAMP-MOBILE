@@ -19,14 +19,26 @@ jobs:
         java-version: '17'
         distribution: 'temurin'
 
-    - name: Unzip project and internal archives
+    - name: Unzip project and fix missing C++ headers
       run: |
+        sudo apt-get update && sudo apt-get install -y p7zip-full
         unzip -o SAMP-Mobile-GTA-2.11.zip
         if [ -d "SAMP-Mobile-GTA-2.11" ]; then
-          cp -rn SAMP-Mobile-GTA-2.11/* . || true
+          cp -rf SAMP-Mobile-GTA-2.11/* . || true
+          cp -rf SAMP-Mobile-GTA-2.11/.* . 2>/dev/null || true
         fi
-        # Распаковываем все внутренние zip-файлы (например, cpp.zip)
-        find . -mindepth 2 -name "*.zip" -execdir unzip -o {} \; || true
+        
+        # Распаковываем все вложенные архивы любых форматов
+        find . -mindepth 2 \( -name "*.zip" -o -name "*.7z" -o -name "*.rar" -o -name "*.tar.gz" \) -execdir 7z x -y {} \; || true
+
+        # Находим playerTabList.h и копируем его папку в samp/gui/
+        HEADER_PATH=$(find . -name "playerTabList.h" | head -n 1)
+        if [ -n "$HEADER_PATH" ]; then
+          WIDGETS_DIR=$(dirname "$HEADER_PATH")
+          mkdir -p app/src/main/cpp/samp/gui/samp_widgets
+          cp -rf "$WIDGETS_DIR"/* app/src/main/cpp/samp/gui/samp_widgets/ || true
+        fi
+
         chmod +x gradlew || true
 
     - name: Accept Android SDK Licenses
