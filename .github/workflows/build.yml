@@ -52,15 +52,7 @@ jobs:
           echo "playerTabList.h не найден в архивах. Создаем класс-заглушку..."
           mkdir -p app/src/main/cpp/samp/gui/samp_widgets
           mkdir -p app/src/main/cpp/samp/samp_widgets
-          cat << 'EOF' > app/src/main/cpp/samp/gui/samp_widgets/playerTabList.h
-#pragma once
-
-class PlayerTabList {
-public:
-    PlayerTabList() = default;
-    virtual ~PlayerTabList() = default;
-};
-EOF
+          printf '#pragma once\n\nclass PlayerTabList {\npublic:\n    PlayerTabList() = default;\n    virtual ~PlayerTabList() = default;\n};\n' > app/src/main/cpp/samp/gui/samp_widgets/playerTabList.h
           cp -f app/src/main/cpp/samp/gui/samp_widgets/playerTabList.h app/src/main/cpp/samp/samp_widgets/playerTabList.h
         fi
 
@@ -83,4 +75,3 @@ EOF
       with:
         name: SAMP-Mobile-APK
         path: '**/build/outputs/apk/debug/*.apk'
-
