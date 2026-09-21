@@ -19,7 +19,7 @@ jobs:
         java-version: '17'
         distribution: 'temurin'
 
-    - name: Unzip project and auto-fix C++ headers
+    - name: Unzip project and fix header paths
       run: |
         sudo apt-get update && sudo apt-get install -y p7zip-full
         
@@ -27,31 +27,23 @@ jobs:
           unzip -o SAMP-Mobile-GTA-2.11.zip
         fi
 
-        # Динамический поиск и копирование распакованной папки проекта
-        EXTRACTED_DIR=$(find . -maxdepth 2 -type d -name "app" ! -path "./app" | head -n 1 | xargs -r dirname)
-        if [ -n "$EXTRACTED_DIR" ]; then
-          echo "Найдена распакованная директория проекта: $EXTRACTED_DIR"
-          cp -rf "$EXTRACTED_DIR"/* . || true
-          cp -rf "$EXTRACTED_DIR"/.* . 2>/dev/null || true
-        fi
-
-        # Распаковка всех вложенных архивов
+        # Распаковка всех внутренних архивов
         find . -mindepth 1 \( -iname "*.zip" -o -iname "*.7z" -o -iname "*.rar" \) ! -name "SAMP-Mobile-GTA-2.11.zip" -execdir 7z x -y {} \; || true
 
-        # Поиск файла playerTabList.h по всему репозиторию
+        # Создание необходимых каталогов для импортов C++
+        mkdir -p app/src/main/cpp/samp/gui/samp_widgets
+        mkdir -p app/src/main/cpp/samp/samp_widgets
+
+        # Поиск файла playerTabList.h по всей файловой системе репозитория
         HEADER_PATH=$(find . -iname "playerTabList.h" | head -n 1)
 
         if [ -n "$HEADER_PATH" ]; then
           echo "Файл playerTabList.h найден по пути: $HEADER_PATH"
           WIDGETS_DIR=$(dirname "$HEADER_PATH")
-          mkdir -p app/src/main/cpp/samp/gui/samp_widgets
-          mkdir -p app/src/main/cpp/samp/samp_widgets
           cp -rf "$WIDGETS_DIR"/* app/src/main/cpp/samp/gui/samp_widgets/ || true
           cp -rf "$WIDGETS_DIR"/* app/src/main/cpp/samp/samp_widgets/ || true
         else
-          echo "playerTabList.h не найден в архивах. Создаем класс-заглушку..."
-          mkdir -p app/src/main/cpp/samp/gui/samp_widgets
-          mkdir -p app/src/main/cpp/samp/samp_widgets
+          echo "Файл playerTabList.h не найден в архиве, создаем заголовок..."
           printf '#pragma once\n\nclass PlayerTabList {\npublic:\n    PlayerTabList() = default;\n    virtual ~PlayerTabList() = default;\n};\n' > app/src/main/cpp/samp/gui/samp_widgets/playerTabList.h
           cp -f app/src/main/cpp/samp/gui/samp_widgets/playerTabList.h app/src/main/cpp/samp/samp_widgets/playerTabList.h
         fi
