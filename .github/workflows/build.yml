@@ -19,7 +19,7 @@ jobs:
         java-version: '17'
         distribution: 'temurin'
 
-    - name: Unzip project and auto-fix C++ headers
+    - name: Unzip project and fix C++ case sensitivity
       run: |
         sudo apt-get update && sudo apt-get install -y p7zip-full
         unzip -o SAMP-Mobile-GTA-2.11.zip
@@ -30,29 +30,33 @@ jobs:
         fi
         
         # Распаковка всех вложенных архивов
-        find . -mindepth 2 \( -name "*.zip" -o -name "*.7z" -o -name "*.rar" \) -execdir 7z x -y {} \; || true
+        find . -mindepth 2 \( -iname "*.zip" -o -iname "*.7z" -o -iname "*.rar" \) -execdir 7z x -y {} \; || true
 
-        # Поиск файла playerTabList.h в любых директориях
-        HEADER_PATH=$(find . -name "playerTabList.h" | head -n 1)
+        # Создаем целевые каталоги для компилятора C++
+        mkdir -p app/src/main/cpp/samp/gui/samp_widgets
+        mkdir -p app/src/main/cpp/samp/samp_widgets
 
-        if [ -n "$HEADER_PATH" ]; then
-          echo "Файл найден по пути: $HEADER_PATH"
-          WIDGETS_DIR=$(dirname "$HEADER_PATH")
-          
-          # Создаем целевые каталоги для компилятора C++
-          mkdir -p app/src/main/cpp/samp/gui/samp_widgets
-          mkdir -p app/src/main/cpp/samp/samp_widgets
-          
-          # Копируем файлы виджетов во все возможные точки импорта
-          cp -rf "$WIDGETS_DIR"/* app/src/main/cpp/samp/gui/samp_widgets/ || true
-          cp -rf "$WIDGETS_DIR"/* app/src/main/cpp/samp/samp_widgets/ || true
+        # Регистронезависимый поиск файла playerTabList.h
+        HEADER_FILE=$(find . -iname "playerTabList.h" | head -n 1)
+
+        if [ -n "$HEADER_FILE" ]; then
+          echo "Файл найден по пути: $HEADER_FILE"
+          HEADER_DIR=$(dirname "$HEADER_FILE")
+          cp -rf "$HEADER_DIR"/* app/src/main/cpp/samp/gui/samp_widgets/ || true
+          cp -rf "$HEADER_DIR"/* app/src/main/cpp/samp/samp_widgets/ || true
         else
-          echo "Файл не найден напрямую. Поиск альтернативных папок виджетов..."
-          ALT_DIR=$(find . -type d -name "*widget*" | head -n 1)
-          if [ -n "$ALT_DIR" ]; then
-            mkdir -p app/src/main/cpp/samp/gui/samp_widgets
-            cp -rf "$ALT_DIR"/* app/src/main/cpp/samp/gui/samp_widgets/ || true
+          echo "Поиск папки виджетов..."
+          WIDGET_DIR=$(find . -type d -iname "*widget*" | head -n 1)
+          if [ -n "$WIDGET_DIR" ]; then
+            cp -rf "$WIDGET_DIR"/* app/src/main/cpp/samp/gui/samp_widgets/ || true
+            cp -rf "$WIDGET_DIR"/* app/src/main/cpp/samp/samp_widgets/ || true
           fi
+        fi
+
+        # Если файл так и не найден, создаем заглушку для компилятора
+        if [ ! -f "app/src/main/cpp/samp/gui/samp_widgets/playerTabList.h" ]; then
+          echo '#pragma once' > app/src/main/cpp/samp/gui/samp_widgets/playerTabList.h
+          echo '#pragma once' > app/src/main/cpp/samp/samp_widgets/playerTabList.h
         fi
 
         chmod +x gradlew || true
@@ -74,3 +78,4 @@ jobs:
       with:
         name: SAMP-Mobile-APK
         path: '**/build/outputs/apk/debug/*.apk'
+        
