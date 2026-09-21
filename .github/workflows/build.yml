@@ -19,18 +19,19 @@ jobs:
         java-version: '17'
         distribution: 'temurin'
 
-    - name: Unzip project
+    - name: Unzip project and internal archives
       run: |
         unzip -o SAMP-Mobile-GTA-2.11.zip
         if [ -d "SAMP-Mobile-GTA-2.11" ]; then
           cp -rn SAMP-Mobile-GTA-2.11/* . || true
         fi
+        # Распаковываем все внутренние zip-файлы (например, cpp.zip)
+        find . -mindepth 2 -name "*.zip" -execdir unzip -o {} \; || true
         chmod +x gradlew || true
 
-    - name: Install Android NDK and CMake
+    - name: Accept Android SDK Licenses
       run: |
         yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --licenses || true
-        $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --install "ndk;25.1.8937393" "cmake;3.22.1" || true
 
     - name: Build APK with Gradle
       run: |
