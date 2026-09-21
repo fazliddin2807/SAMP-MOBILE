@@ -1,0 +1,46 @@
+name: Build Android APK
+
+on:
+  push:
+    branches: [ "main", "master" ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Unzip project files
+      run: |
+        unzip -o SAMP-Mobile-GTA-2.11.zip
+        if [ -d "SAMP-Mobile-GTA-2.11" ]; then
+          cp -rn SAMP-Mobile-GTA-2.11/* .
+        fi
+        chmod +x gradlew || true
+
+    - name: Set up JDK 17
+      uses: actions/setup-java@v4
+      with:
+        java-version: '17'
+        distribution: 'temurin'
+
+    - name: Setup Android SDK
+      uses: android-actions/setup-android@v3
+
+    - name: Build APK with Gradle
+      run: |
+        if [ -f "./gradlew" ]; then
+          ./gradlew assembleDebug
+        else
+          gradle assembleDebug
+        fi
+
+    - name: Upload APK
+      uses: actions/upload-artifact@v4
+      with:
+        name: SAMP-Mobile-APK
+        path: '**/build/outputs/apk/debug/*.apk'
+        
