@@ -19,22 +19,31 @@ jobs:
         java-version: '17'
         distribution: 'temurin'
 
-    - name: Unzip project and fix header paths
+    - name: Unzip project and fix structure
       run: |
         sudo apt-get update && sudo apt-get install -y p7zip-full
         
+        # Распаковка основного архива
         if [ -f "SAMP-Mobile-GTA-2.11.zip" ]; then
           unzip -o SAMP-Mobile-GTA-2.11.zip
         fi
 
-        # Распаковка всех внутренних архивов
+        # Перенос файлов Gradle в корень репозитория, если они во вложенной папке
+        GRADLE_DIR=$(find . -maxdepth 3 \( -name "settings.gradle*" -o -name "build.gradle*" \) | head -n 1 | xargs -r dirname)
+        if [ -n "$GRADLE_DIR" ] && [ "$GRADLE_DIR" != "." ]; then
+          echo "Перенос файлов проекта из $GRADLE_DIR в корень..."
+          cp -rf "$GRADLE_DIR"/* . || true
+          cp -rf "$GRADLE_DIR"/.* . 2>/dev/null || true
+        fi
+
+        # Распаковка остальных архивов при наличии
         find . -mindepth 1 \( -iname "*.zip" -o -iname "*.7z" -o -iname "*.rar" \) ! -name "SAMP-Mobile-GTA-2.11.zip" -execdir 7z x -y {} \; || true
 
-        # Создание необходимых каталогов для импортов C++
+        # Создание каталогов для импортов C++
         mkdir -p app/src/main/cpp/samp/gui/samp_widgets
         mkdir -p app/src/main/cpp/samp/samp_widgets
 
-        # Поиск файла playerTabList.h по всей файловой системе репозитория
+        # Поиск файла playerTabList.h
         HEADER_PATH=$(find . -iname "playerTabList.h" | head -n 1)
 
         if [ -n "$HEADER_PATH" ]; then
@@ -43,7 +52,7 @@ jobs:
           cp -rf "$WIDGETS_DIR"/* app/src/main/cpp/samp/gui/samp_widgets/ || true
           cp -rf "$WIDGETS_DIR"/* app/src/main/cpp/samp/samp_widgets/ || true
         else
-          echo "Файл playerTabList.h не найден в архиве, создаем заголовок..."
+          echo "Файл playerTabList.h не найден, создаем заглушку..."
           printf '#pragma once\n\nclass PlayerTabList {\npublic:\n    PlayerTabList() = default;\n    virtual ~PlayerTabList() = default;\n};\n' > app/src/main/cpp/samp/gui/samp_widgets/playerTabList.h
           cp -f app/src/main/cpp/samp/gui/samp_widgets/playerTabList.h app/src/main/cpp/samp/samp_widgets/playerTabList.h
         fi
